@@ -248,8 +248,8 @@ export default function AboutPage() {
             {[
               {
                 label: "WhatsApp (fastest)",
-                value: "+91 99990 00000",
-                href: "https://wa.me/919999000000",
+                value: `+91 ${(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999000000").slice(2)}`,
+                href: `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999000000"}`,
                 note: "Response within 30 min during 9am-9pm",
               },
               {

@@ -312,6 +312,7 @@ export default function ForBuyersPage() {
                 description="Full 120-point inspection + detailed report."
                 features={standardBuyerFeatures}
                 ctaLabel="Book Standard"
+                ctaHref="/book?tier=buyer-standard"
               />
             </AnimatedSection>
             <AnimatedSection delay={0.1}>
@@ -322,6 +323,7 @@ export default function ForBuyersPage() {
                 features={premiumBuyerFeatures}
                 popular
                 ctaLabel="Book Premium"
+                ctaHref="/book?tier=buyer-premium"
               />
             </AnimatedSection>
             <AnimatedSection delay={0.2}>
@@ -331,6 +333,7 @@ export default function ForBuyersPage() {
                 description="Compare two properties. One report to decide."
                 features={prePurchaseFeatures}
                 ctaLabel="Book Package"
+                ctaHref="/book?tier=prepurchase"
               />
             </AnimatedSection>
           </div>
