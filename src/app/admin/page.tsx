@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 async function getData() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  const supabase = getSupabase();
+  if (!supabase) return null;
 
   const [bookingsRes, subscribersRes] = await Promise.allSettled([
     supabase.from("bookings").select("*").order("created_at", { ascending: false }),

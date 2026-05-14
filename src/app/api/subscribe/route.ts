@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,6 +48,7 @@ async function notifySubscription(email: string) {
 }
 
 async function saveSubscriber(email: string) {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
+  const supabase = getSupabase();
+  if (!supabase) return;
   await supabase.from("subscribers").insert({ email });
 }

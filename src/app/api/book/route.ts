@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 interface BookingData {
   type: "rental" | "purchase";
@@ -87,7 +87,8 @@ async function sendEmails(data: BookingData) {
 }
 
 async function saveBooking(data: BookingData) {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
+  const supabase = getSupabase();
+  if (!supabase) return;
 
   await supabase.from("bookings").insert({
     name: data.name,
