@@ -19,6 +19,7 @@ Deployed: Vercel (connected to main branch — push to main = auto-deploy)
 | Styling | Tailwind CSS 4 (CSS variable theme in `globals.css`) |
 | Fonts | Fraunces (serif/headlines) + Inter (body) via `next/font/google` |
 | Email | Resend (`resend` npm package) |
+| Payments | Razorpay (`razorpay` npm package) |
 | Spreadsheet | Google Sheets via `googleapis` |
 | Blog | `@next/mdx` — articles in `src/content/blog/*.mdx` |
 | Forms | `react-hook-form` + `zod` |
@@ -32,15 +33,22 @@ Deployed: Vercel (connected to main branch — push to main = auto-deploy)
 Copy `env.example` → `.env.local` and fill in:
 
 ```
-RESEND_API_KEY=re_...               # from resend.com dashboard
-NOTIFICATION_EMAIL=...              # where booking alerts land (your inbox)
-FROM_EMAIL=onboarding@resend.dev    # change to hello@backtraq.in after domain verification
-NEXT_PUBLIC_WHATSAPP_NUMBER=91...   # digits only with country code, e.g. 919876543210
+RESEND_API_KEY=re_...                    # from resend.com dashboard
+NOTIFICATION_EMAIL=...                   # where booking alerts land
+FROM_EMAIL=onboarding@resend.dev         # change to hello@backtraq.in after domain verification
+NEXT_PUBLIC_WHATSAPP_NUMBER=91...        # digits only, e.g. 919876543210
 
-# Optional — Google Sheets booking log
+# Google Sheets booking log
 GOOGLE_SERVICE_ACCOUNT_EMAIL=...
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-GOOGLE_SHEET_ID=...                 # from spreadsheet URL
+GOOGLE_SHEET_ID=...                      # from spreadsheet URL
+
+# Razorpay payments
+RAZORPAY_KEY_ID=rzp_live_...
+RAZORPAY_KEY_SECRET=...
+
+# Admin dashboard password (/admin?key=...)
+ADMIN_KEY=some_long_secret_string
 ```
 
 **For Vercel deployment:** add all the above in Project → Settings → Environment Variables.
@@ -52,22 +60,40 @@ GOOGLE_SHEET_ID=...                 # from spreadsheet URL
 ### Pages
 | Route | Status | Notes |
 |---|---|---|
-| `/` | ✅ | Full homepage — redesigned editorial layout |
+| `/` | ✅ | Full homepage — editorial layout, animated hero |
 | `/for-renters` | ✅ | 75-point checklist, pricing, testimonials |
 | `/for-buyers` | ✅ | 120-point checklist, buyer pricing, FAQs |
 | `/how-it-works` | ✅ | Process, inspector profiles, tools |
 | `/pricing` | ✅ | Full comparison tables — renter + buyer |
 | `/sample-report` | ✅ | Annotated mock report with findings |
-| `/book` | ✅ | 5-step booking form, reads `?tier=` query param |
+| `/book` | ✅ | 5-step form → payment screen → confirmation |
 | `/about` | ✅ | Founder story, principles, team, press |
-| `/blog` | ✅ | Client-side category filter, links to articles |
-| `/blog/[slug]` | ✅ | 6 real MDX articles, static-generated |
+| `/blog` | ✅ | Client-side category filter |
+| `/blog/[slug]` | ✅ | 6 MDX articles, statically generated |
+| `/privacy` | ✅ | Privacy policy — 7 sections |
+| `/terms` | ✅ | Terms of service — 7 sections |
+| `/admin?key=ADMIN_KEY` | ✅ | Bookings + subscribers from Google Sheets |
 
 ### API routes
 | Route | What it does |
 |---|---|
-| `POST /api/book` | Sends 2 emails via Resend (notification to owner + confirmation to customer), appends row to Google Sheets |
-| `POST /api/subscribe` | Newsletter signup — emails both parties, logs to Sheets |
+| `POST /api/book` | Sends 2 Resend emails + appends row to Google Sheets |
+| `POST /api/subscribe` | Newsletter signup — Resend + Google Sheets |
+| `POST /api/payment` | Razorpay: `action=create` makes order, `action=verify` checks HMAC-SHA256 signature |
+
+### Components
+| File | Purpose |
+|---|---|
+| `BookingForm.tsx` | 5-step form. Step 5 → payment screen with `PaymentButton` + "pay on day" skip |
+| `PaymentButton.tsx` | Lazy-loads Razorpay checkout.js, opens modal, calls `/api/payment?action=verify` on success |
+| `HeroAnnotation.tsx` | Animated inspection report preview card in the homepage hero |
+| `Nav.tsx` | Fixed nav with scroll detection |
+| `PricingCard.tsx` | Reusable pricing card with features list |
+| `TestimonialCard.tsx` | Quote card with large terracotta opening mark |
+| `WhatsAppButton.tsx` | Floating WA button (reads `NEXT_PUBLIC_WHATSAPP_NUMBER`) |
+| `AnimatedSection.tsx` | Framer Motion scroll-reveal wrapper |
+| `ChecklistAccordion.tsx` | Expandable checklist categories |
+| `FAQAccordion.tsx` | Expandable FAQ list |
 
 ### Blog articles (in `src/content/blog/`)
 - `7-things-inspectors-check.mdx` — For Renters
@@ -77,7 +103,7 @@ GOOGLE_SHEET_ID=...                 # from spreadsheet URL
 - `monsoon-proofing-flat.mdx` — For Renters
 - `under-construction-inspection.mdx` — For Buyers
 
-To add a new article: create a new `.mdx` file in `src/content/blog/`, export a `metadata` object, and add an entry to `src/lib/blog.ts`.
+To add a new article: create `.mdx` in `src/content/blog/`, export a `metadata` object, add entry to `src/lib/blog.ts`.
 
 ---
 
@@ -89,26 +115,45 @@ src/
     page.tsx                  Homepage
     layout.tsx                Root layout (fonts, Nav, Footer, WhatsAppButton)
     globals.css               Tailwind theme — all brand colors defined here
+    admin/page.tsx            Admin dashboard (force-dynamic, key auth via searchParams)
     api/
       book/route.ts           Booking API (Resend + Sheets)
       subscribe/route.ts      Newsletter API
+      payment/route.ts        Razorpay order create + HMAC verify
     blog/
       page.tsx                Blog list (client component — filter state)
       [slug]/page.tsx         Individual article (dynamic import of MDX)
     book/page.tsx             Booking page (wraps BookingForm in Suspense)
+    privacy/page.tsx          Privacy policy
+    terms/page.tsx            Terms of service
   components/
-    BookingForm.tsx           5-step form, reads ?tier= from URL
-    HeroAnnotation.tsx        Animated inspection report preview card
+    BookingForm.tsx           5-step form + payment screen
+    PaymentButton.tsx         Razorpay checkout.js wrapper
+    HeroAnnotation.tsx        Animated report preview card
     Nav.tsx                   Fixed nav with scroll detection
     PricingCard.tsx           Reusable pricing card
-    TestimonialCard.tsx       Quote card with large opening mark
-    WhatsAppButton.tsx        Floating WA button (NEXT_PUBLIC_WHATSAPP_NUMBER)
-    AnimatedSection.tsx       Framer Motion scroll-reveal wrapper
+    TestimonialCard.tsx       Quote card
+    WhatsAppButton.tsx        Floating WA button
+    AnimatedSection.tsx       Framer Motion scroll-reveal
   content/blog/               MDX articles
   lib/
-    blog.ts                   Article metadata array (source of truth for blog list)
-mdx-components.tsx            Global MDX element styles (h1-h3, p, ul, blockquote, etc.)
+    blog.ts                   Article metadata array (source of truth)
+mdx-components.tsx            Global MDX element styles
+env.example                   All env vars documented
 ```
+
+---
+
+## Pricing (for reference — used in BookingForm and API)
+
+| Tier key | Label | Price (INR) | Paise |
+|---|---|---|---|
+| `basic` | Basic | ₹1,499 | 149900 |
+| `standard` | Standard | ₹2,499 | 249900 |
+| `premium` | Premium | ₹3,999 | 399900 |
+| `buyer-standard` | Standard Buyer | ₹4,999 | 499900 |
+| `buyer-premium` | Premium Buyer | ₹8,999 | 899900 |
+| `prepurchase` | Pre-purchase | ₹14,999 | 1499900 |
 
 ---
 
@@ -126,71 +171,36 @@ Defined in `src/app/globals.css` under `@theme`:
 | `muted` | `#5C5C5C` | Secondary text |
 | `border` | `#E2DDD6` | All borders |
 
-Headline font: `var(--font-fraunces)` — always set via `style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}` on individual elements (Tailwind 4 class approach inconsistent across components).
+Headline font: always set via `style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}` on individual elements (Tailwind 4 class approach inconsistent).
 
 ---
 
-## Next steps (prioritised)
+## Before launch — remaining setup (not code)
 
-### 🔴 Must do before launch
+These are configuration tasks, not code changes:
 
-1. **Update real WhatsApp number**
-   - Set `NEXT_PUBLIC_WHATSAPP_NUMBER=91XXXXXXXXXX` in `.env.local` and in Vercel env vars
-   - This updates the floating button, footer, and about page automatically
+1. **Real WhatsApp number** — set `NEXT_PUBLIC_WHATSAPP_NUMBER=91XXXXXXXXXX` in `.env.local` and Vercel. Updates the floating button, footer, and about page.
 
-2. **Verify sending domain in Resend**
-   - Add `backtraq.in` in [Resend dashboard → Domains](https://resend.com/domains)
-   - Follow their DNS record instructions (takes ~10 min)
-   - Then update `.env.local` and Vercel: `FROM_EMAIL=hello@backtraq.in`
-   - Until this is done, customer confirmation emails won't deliver to non-Resend accounts
+2. **Resend domain verification** — add `backtraq.in` at resend.com/domains, follow DNS instructions (~10 min). Then update `FROM_EMAIL=hello@backtraq.in` in both places. Until then, customer confirmation emails only deliver to the Resend account owner's email.
 
-3. **Set Vercel environment variables**
-   - Go to Vercel → Project → Settings → Environment Variables
-   - Add `RESEND_API_KEY`, `NOTIFICATION_EMAIL`, `FROM_EMAIL`, `NEXT_PUBLIC_WHATSAPP_NUMBER`
+3. **Razorpay keys** — get from razorpay.com/app/keys. Add `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` to `.env.local` and Vercel. Without these, the Pay Now button returns a 503.
 
-### 🟡 High value, do next
+4. **Google Sheets setup** — create a spreadsheet with two sheets named `Bookings` and `Subscribers`. Set up a Google Cloud service account, enable Sheets API, share the spreadsheet with the service account email. Add the 3 `GOOGLE_*` vars to Vercel. Without this, bookings still send via email but aren't logged.
 
-4. **Google Sheets booking log**
-   - Create a spreadsheet with two sheets: "Bookings" and "Subscribers"
-   - Set up a Google Cloud service account, enable Sheets API, share the spreadsheet
-   - Add `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_SHEET_ID` to Vercel env vars
-   - See `env.example` for format of `GOOGLE_PRIVATE_KEY` (escaped `\n`)
+5. **Admin key** — set `ADMIN_KEY` to any secret string in Vercel. Then access `/admin?key=<that string>`.
 
-5. **Payment integration (Razorpay)**
-   - Standard for Indian B2C
-   - Add a `/api/payment/route.ts` that creates a Razorpay order
-   - Add a `PaymentButton` client component on the booking confirmation screen
-   - Razorpay webhook → update booking status
-   - Alternatively: UPI QR code on the confirmation screen (simpler, manual reconciliation)
+6. **Vercel env vars** — go to Vercel → Project → Settings → Environment Variables and add all of the above.
 
-6. **Admin view for bookings**
-   - Simple password-protected `/admin` page that fetches from Google Sheets or a database
-   - Shows pending bookings, status, contact info
-   - Can start as a read-only view of the Google Sheet
+---
 
-7. **Privacy Policy and Terms of Service pages**
-   - Footer links currently point to `#`
-   - Create `/privacy` and `/terms` pages (MDX is good for this)
+## Growth / nice to have
 
-### 🟢 Growth / nice to have
-
-8. **More blog articles**
-   - Add to `src/content/blog/` + `src/lib/blog.ts`
-   - Target: "Delhi NCR" category, "For Buyers", "Guides" — currently thin
-   - Consider `remark-gfm` plugin in `next.config.ts` for tables and strikethrough
-
-9. **SEO improvements**
-   - Add `openGraph.images` to key page metadata (1200×630 OG images)
-   - Add structured data (LocalBusiness schema) to layout
-   - The `sitemap.ts` and `robots.ts` already exist
-
-10. **Real inspection photos**
-    - The hero currently uses a CSS inspection report illustration
-    - Real property inspection photos (seepage, socket testers, moisture meters) would significantly improve credibility
-    - Add to `/public/photos/` and update `HeroAnnotation.tsx`
-
-11. **Testimonial photos**
-    - Replace initials avatars with real customer photos if available
+- **More blog articles** — add `.mdx` to `src/content/blog/` + entry in `src/lib/blog.ts`. Target: "Delhi NCR" and "Guides" categories are thin.
+- **OG images** — add `openGraph.images` to key page metadata (1200×630). Currently no social share images.
+- **LocalBusiness structured data** — add JSON-LD schema to `layout.tsx` for local SEO.
+- **Real inspection photos** — hero uses a CSS card illustration. Real photos (moisture meters, socket testers, seepage) in `/public/photos/` would improve credibility. Update `HeroAnnotation.tsx`.
+- **Testimonial photos** — replace initials avatars with real customer photos.
+- **Razorpay webhook** — `/api/payment` currently only verifies on the client callback. A webhook handler would let you reconcile failed/dropped payments server-side.
 
 ---
 
@@ -202,12 +212,12 @@ npm run build    # production build + type check
 npm run lint     # ESLint
 ```
 
-Push to `main` → Vercel auto-deploys. No staging environment set up yet.
+Push to `main` → Vercel auto-deploys. No staging environment.
 
 ---
 
 ## Important Next.js 16 notes (from AGENTS.md)
 
-- `params` in route handlers/pages is now `Promise<{slug: string}>` — must `await params`
+- Both `params` AND `searchParams` in pages/layouts are now `Promise<{...}>` — must `await` both
 - `useSearchParams()` requires a `<Suspense>` boundary in the parent — done in `book/page.tsx`
 - Read `node_modules/next/dist/docs/` before adding new Next.js patterns
