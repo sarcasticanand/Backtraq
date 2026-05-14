@@ -10,12 +10,14 @@ import dynamic from "next/dynamic";
 
 const PaymentButton = dynamic(() => import("./PaymentButton"), { ssr: false });
 
+const RAZORPAY_ENABLED = !!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
 const schema = z.object({
   type: z.enum(["rental", "purchase"]),
   city: z.string().min(1, "Please select a city"),
   area: z.string().min(2, "Please enter an area or sector"),
   propertyType: z.string().min(1, "Please select a property type"),
-  sizeSqft: z.string().optional(),
+  sizeSqft: z.string().refine(val => !val || /\d/.test(val), "Please include a number (e.g. 1100 sqft)").optional(),
   tier: z.string().min(1, "Please select a plan"),
   date: z.string().min(1, "Please select a date"),
   timeSlot: z.string().min(1, "Please select a time slot"),
@@ -191,21 +193,31 @@ export default function BookingForm() {
           <p className="text-red-500 text-sm mb-4 text-center">{paymentError}</p>
         )}
 
-        <PaymentButton
-          tier={submittedData.tier}
-          name={submittedData.name}
-          email={submittedData.email}
-          phone={submittedData.phone}
-          onSuccess={handlePaymentSuccess}
-          onError={setPaymentError}
-        />
-
-        <button
-          onClick={handleSkipPayment}
-          className="w-full mt-3 py-3 text-sm text-muted hover:text-charcoal transition-colors"
-        >
-          Skip — I&apos;ll pay on the day (cash / UPI)
-        </button>
+        {RAZORPAY_ENABLED ? (
+          <>
+            <PaymentButton
+              tier={submittedData.tier}
+              name={submittedData.name}
+              email={submittedData.email}
+              phone={submittedData.phone}
+              onSuccess={handlePaymentSuccess}
+              onError={setPaymentError}
+            />
+            <button
+              onClick={handleSkipPayment}
+              className="w-full mt-3 py-3 text-sm text-muted hover:text-charcoal transition-colors"
+            >
+              Skip — I&apos;ll pay on the day (cash / UPI)
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={handleSkipPayment}
+            className="w-full bg-forest text-cream font-semibold py-3.5 rounded-xl hover:bg-forest-dark transition-colors"
+          >
+            Confirm Booking — Pay on the day (cash / UPI)
+          </button>
+        )}
       </div>
     );
   }

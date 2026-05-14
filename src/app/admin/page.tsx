@@ -1,41 +1,20 @@
 import { redirect } from "next/navigation";
-import { google } from "googleapis";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-async function getSheetData() {
-  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const sheetId = process.env.GOOGLE_SHEET_ID;
+async function getData() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
 
-  if (!serviceAccountEmail || !privateKey || !sheetId) return null;
+  const [bookingsRes, subscribersRes] = await Promise.allSettled([
+    supabase.from("bookings").select("*").order("created_at", { ascending: false }),
+    supabase.from("subscribers").select("*").order("created_at", { ascending: false }),
+  ]);
 
-  try {
-    const auth = new google.auth.JWT({
-      email: serviceAccountEmail,
-      key: privateKey,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    });
-    const sheets = google.sheets({ version: "v4", auth });
+  const bookings = bookingsRes.status === "fulfilled" ? (bookingsRes.value.data ?? []) : [];
+  const subscribers = subscribersRes.status === "fulfilled" ? (subscribersRes.value.data ?? []) : [];
 
-    const [bookingsRes, subscribersRes] = await Promise.allSettled([
-      sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Bookings!A:L" }),
-      sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: "Subscribers!A:B" }),
-    ]);
-
-    const bookings =
-      bookingsRes.status === "fulfilled"
-        ? (bookingsRes.value.data.values ?? []).slice(1).reverse()
-        : [];
-    const subscribers =
-      subscribersRes.status === "fulfilled"
-        ? (subscribersRes.value.data.values ?? []).slice(1).reverse()
-        : [];
-
-    return { bookings, subscribers };
-  } catch {
-    return null;
-  }
+  return { bookings, subscribers };
 }
 
 interface SearchParams {
@@ -54,7 +33,7 @@ export default async function AdminPage({
     redirect("/");
   }
 
-  const data = await getSheetData();
+  const data = await getData();
 
   return (
     <div className="min-h-screen bg-cream pt-24 pb-20">
@@ -71,13 +50,12 @@ export default async function AdminPage({
 
         {!data && (
           <div className="bg-white border border-border rounded-2xl p-8 text-center text-muted">
-            Google Sheets not configured. Set GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, and GOOGLE_SHEET_ID.
+            Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
           </div>
         )}
 
         {data && (
           <div className="space-y-12">
-            {/* Counts */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
                 { label: "Total bookings", value: data.bookings.length },
@@ -108,7 +86,7 @@ export default async function AdminPage({
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-cream">
-                        {["Date", "Name", "Phone", "Email", "Type", "Plan", "City", "Area", "Property", "Insp. Date", "Time", "Notes"].map((h) => (
+                        {["Date", "Name", "Phone", "Email", "Type", "Plan", "City", "Area", "Property", "Size", "Insp. Date", "Time", "Payment", "Notes"].map((h) => (
                           <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wider whitespace-nowrap">
                             {h}
                           </th>
@@ -118,12 +96,27 @@ export default async function AdminPage({
                     <tbody className="divide-y divide-border">
                       {data.bookings.length === 0 && (
                         <tr>
-                          <td colSpan={12} className="px-4 py-8 text-center text-muted">No bookings yet.</td>
+                          <td colSpan={14} className="px-4 py-8 text-center text-muted">No bookings yet.</td>
                         </tr>
                       )}
-                      {data.bookings.map((row, i) => (
-                        <tr key={i} className="hover:bg-cream/50 transition-colors">
-                          {row.map((cell: string, j: number) => (
+                      {data.bookings.map((row) => (
+                        <tr key={row.id} className="hover:bg-cream/50 transition-colors">
+                          {[
+                            new Date(row.created_at).toLocaleDateString("en-IN"),
+                            row.name,
+                            row.phone,
+                            row.email,
+                            row.type,
+                            row.tier,
+                            row.city,
+                            row.area,
+                            row.property_type,
+                            row.size_sqft || "—",
+                            row.inspection_date,
+                            row.time_slot,
+                            row.payment_id || "Pay on day",
+                            row.notes || "—",
+                          ].map((cell, j) => (
                             <td key={j} className="px-4 py-3 text-charcoal whitespace-nowrap max-w-[200px] truncate">
                               {cell}
                             </td>
@@ -162,11 +155,10 @@ export default async function AdminPage({
                           <td colSpan={2} className="px-4 py-8 text-center text-muted">No subscribers yet.</td>
                         </tr>
                       )}
-                      {data.subscribers.map((row, i) => (
-                        <tr key={i} className="hover:bg-cream/50 transition-colors">
-                          {row.map((cell: string, j: number) => (
-                            <td key={j} className="px-4 py-3 text-charcoal">{cell}</td>
-                          ))}
+                      {data.subscribers.map((row) => (
+                        <tr key={row.id} className="hover:bg-cream/50 transition-colors">
+                          <td className="px-4 py-3 text-charcoal">{new Date(row.created_at).toLocaleDateString("en-IN")}</td>
+                          <td className="px-4 py-3 text-charcoal">{row.email}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { google } from "googleapis";
+import { supabase } from "@/lib/supabase";
 
 interface BookingData {
   type: "rental" | "purchase";
@@ -15,6 +15,7 @@ interface BookingData {
   phone: string;
   email: string;
   notes?: string;
+  paymentId?: string;
 }
 
 const tierLabels: Record<string, string> = {
@@ -53,6 +54,7 @@ async function sendEmails(data: BookingData) {
           <tr><td style="padding:8px;border:1px solid #eee;font-weight:bold">Property type</td><td style="padding:8px;border:1px solid #eee">${data.propertyType}${data.sizeSqft ? ` · ${data.sizeSqft}` : ""}</td></tr>
           <tr><td style="padding:8px;border:1px solid #eee;font-weight:bold">Preferred date</td><td style="padding:8px;border:1px solid #eee">${data.date}</td></tr>
           <tr><td style="padding:8px;border:1px solid #eee;font-weight:bold">Time slot</td><td style="padding:8px;border:1px solid #eee">${data.timeSlot}</td></tr>
+          ${data.paymentId ? `<tr><td style="padding:8px;border:1px solid #eee;font-weight:bold">Payment ID</td><td style="padding:8px;border:1px solid #eee">${data.paymentId}</td></tr>` : ""}
           ${data.notes ? `<tr><td style="padding:8px;border:1px solid #eee;font-weight:bold">Notes</td><td style="padding:8px;border:1px solid #eee">${data.notes}</td></tr>` : ""}
         </table>
         <p style="margin-top:16px;color:#555;font-size:13px">Reply to this email or WhatsApp ${data.phone} to confirm.</p>
@@ -84,53 +86,30 @@ async function sendEmails(data: BookingData) {
   ]);
 }
 
-async function appendToSheet(data: BookingData) {
-  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const sheetId = process.env.GOOGLE_SHEET_ID;
+async function saveBooking(data: BookingData) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
 
-  if (!serviceAccountEmail || !privateKey || !sheetId) return;
-
-  const auth = new google.auth.JWT({
-    email: serviceAccountEmail,
-    key: privateKey,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-
-  const sheets = google.sheets({ version: "v4", auth });
-  const tierLabel = tierLabels[data.tier] || data.tier;
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: sheetId,
-    range: "Bookings!A:L",
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        [
-          new Date().toISOString(),
-          data.name,
-          data.phone,
-          data.email,
-          data.type === "purchase" ? "Buyer" : "Renter",
-          tierLabel,
-          data.city,
-          data.area,
-          data.propertyType,
-          data.date,
-          data.timeSlot,
-          data.notes || "",
-        ],
-      ],
-    },
+  await supabase.from("bookings").insert({
+    name: data.name,
+    phone: data.phone,
+    email: data.email,
+    type: data.type,
+    tier: data.tier,
+    city: data.city,
+    area: data.area,
+    property_type: data.propertyType,
+    size_sqft: data.sizeSqft || null,
+    inspection_date: data.date,
+    time_slot: data.timeSlot,
+    notes: data.notes || null,
+    payment_id: data.paymentId || null,
   });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const data: BookingData = await req.json();
-
-    await Promise.allSettled([sendEmails(data), appendToSheet(data)]);
-
+    await Promise.allSettled([sendEmails(data), saveBooking(data)]);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ success: false }, { status: 500 });

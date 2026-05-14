@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { google } from "googleapis";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false }, { status: 400 });
     }
 
-    await Promise.allSettled([notifySubscription(email), logToSheet(email)]);
+    await Promise.allSettled([notifySubscription(email), saveSubscriber(email)]);
 
     return NextResponse.json({ success: true });
   } catch {
@@ -47,27 +47,7 @@ async function notifySubscription(email: string) {
   ]);
 }
 
-async function logToSheet(email: string) {
-  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const sheetId = process.env.GOOGLE_SHEET_ID;
-
-  if (!serviceAccountEmail || !privateKey || !sheetId) return;
-
-  const auth = new google.auth.JWT({
-    email: serviceAccountEmail,
-    key: privateKey,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-
-  const sheets = google.sheets({ version: "v4", auth });
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: sheetId,
-    range: "Subscribers!A:B",
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [[new Date().toISOString(), email]],
-    },
-  });
+async function saveSubscriber(email: string) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
+  await supabase.from("subscribers").insert({ email });
 }
