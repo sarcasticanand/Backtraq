@@ -2,15 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const annotations = [
-  { top: "28%", left: "22%", label: "Seepage behind wall", delay: 0.4 },
-  { top: "55%", left: "68%", label: "Faulty socket earthing", delay: 0.9 },
-  { top: "72%", left: "35%", label: "Cracked floor tile", delay: 1.4 },
-  { top: "18%", left: "60%", label: "Damp ceiling patch", delay: 1.9 },
+const findings = [
+  { severity: "high", label: "Active seepage, NW wall", room: "Master bedroom", delay: 0.5 },
+  { severity: "high", label: "Faulty earthing — kitchen socket", room: "Kitchen", delay: 1.0 },
+  { severity: "medium", label: "Drain slow — 4.2 min clearance", room: "Bathroom 2", delay: 1.5 },
+  { severity: "low", label: "9/11 sockets pass earthing", room: "All rooms", delay: 2.0 },
 ];
 
+const severityConfig = {
+  high: { dot: "bg-red-500", badge: "bg-red-50 border-red-200 text-red-700" },
+  medium: { dot: "bg-amber-500", badge: "bg-amber-50 border-amber-200 text-amber-700" },
+  low: { dot: "bg-green-500", badge: "bg-green-50 border-green-200 text-green-700" },
+};
+
 export default function HeroAnnotation() {
-  const [visible, setVisible] = useState<boolean[]>(annotations.map(() => false));
+  const [visible, setVisible] = useState<boolean[]>(findings.map(() => false));
   const ref = useRef<HTMLDivElement>(null);
   const triggered = useRef(false);
 
@@ -19,14 +25,14 @@ export default function HeroAnnotation() {
       ([entry]) => {
         if (entry.isIntersecting && !triggered.current) {
           triggered.current = true;
-          annotations.forEach((a, i) => {
+          findings.forEach((f, i) => {
             setTimeout(() => {
               setVisible((prev) => {
                 const next = [...prev];
                 next[i] = true;
                 return next;
               });
-            }, a.delay * 1000);
+            }, f.delay * 1000);
           });
         }
       },
@@ -37,60 +43,95 @@ export default function HeroAnnotation() {
   }, []);
 
   return (
-    <div ref={ref} className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
-      {/* Apartment illustration (CSS-based since we don't have a real photo) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#E8E0D5] via-[#D9CEC0] to-[#C8BBA8]">
-        {/* Room silhouette */}
-        <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-[#BFB09A]" />
-        <div className="absolute top-0 left-0 right-0 h-4 bg-[#C8BBA8]" />
-        {/* Window */}
-        <div className="absolute top-12 right-16 w-32 h-40 bg-[#A8C4D4]/60 rounded border-4 border-[#9BA89A]">
-          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-[#B8D4E4]/40" />
-            ))}
-          </div>
-        </div>
-        {/* Door */}
-        <div className="absolute bottom-1/4 left-20 w-20 h-36 bg-[#A89880] rounded-t border-2 border-[#8C7A60]">
-          <div className="absolute top-1/2 right-3 w-2 h-2 rounded-full bg-[#C8A951]" />
-        </div>
-        {/* Wall texture hints */}
-        <div className="absolute top-28 left-8 w-24 h-16 bg-[#C2B5A4]/50 rounded" />
-        <div className="absolute top-16 left-1/3 w-40 h-3 bg-[#BFB09A]/60 rounded" />
-      </div>
-
-      {/* Inspector badge */}
-      <div className="absolute top-4 left-4 bg-forest text-cream text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-2">
-        <div className="w-1.5 h-1.5 rounded-full bg-terracotta animate-pulse" />
-        Inspector active
-      </div>
-
-      {/* Annotations */}
-      {annotations.map((a, i) => (
-        <div
-          key={i}
-          className="absolute"
-          style={{ top: a.top, left: a.left, transform: "translate(-50%, -50%)" }}
-        >
-          <div
-            className={`transition-all duration-500 ${
-              visible[i] ? "opacity-100 scale-100" : "opacity-0 scale-75"
-            }`}
-          >
-            {/* Circle */}
-            <div className="relative w-12 h-12">
-              <div className="absolute inset-0 rounded-full border-2 border-terracotta animate-ping opacity-30" />
-              <div className="absolute inset-0 rounded-full border-2 border-terracotta" />
-              <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 rounded-full bg-terracotta -translate-x-1/2 -translate-y-1/2" />
+    <div ref={ref} className="relative w-full">
+      {/* Report card */}
+      <div className="bg-white rounded-2xl border border-border shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-forest px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-cream/10 flex items-center justify-center">
+              <div className="w-2.5 h-2.5 rounded-full border-2 border-terracotta" />
             </div>
-            {/* Label */}
-            <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm text-charcoal text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap border border-border">
-              {a.label}
+            <div>
+              <p
+                className="text-cream font-bold text-sm leading-none"
+                style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+              >
+                Backtraq
+              </p>
+              <p className="text-cream/60 text-xs mt-0.5">Inspection Report · Standard Plan</p>
             </div>
           </div>
+          <div className="text-right text-xs text-cream/60">
+            <p>2BHK, Sector 49</p>
+            <p>Gurgaon</p>
+          </div>
         </div>
-      ))}
+
+        {/* Risk summary bar */}
+        <div className="border-b border-border px-6 py-4 grid grid-cols-3 gap-4">
+          {[
+            { count: 2, label: "High", color: "bg-red-500" },
+            { count: 2, label: "Medium", color: "bg-amber-500" },
+            { count: 1, label: "Low", color: "bg-green-500" },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <div className={`w-2 h-2 rounded-full ${s.color} mx-auto mb-1`} />
+              <p
+                className="text-2xl font-bold text-charcoal leading-none"
+                style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+              >
+                {s.count}
+              </p>
+              <p className="text-xs text-muted mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Findings list */}
+        <div className="divide-y divide-border">
+          {findings.map((f, i) => {
+            const config = severityConfig[f.severity as keyof typeof severityConfig];
+            return (
+              <div
+                key={i}
+                className={`px-6 py-4 flex items-start gap-3 transition-all duration-500 ${
+                  visible[i] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                }`}
+              >
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 flex-shrink-0 mt-0.5 ${config.badge}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+                  {f.severity.charAt(0).toUpperCase() + f.severity.slice(1)}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted mb-0.5">{f.room}</p>
+                  <p className="text-sm font-semibold text-charcoal leading-snug">{f.label}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="bg-cream border-t border-border px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-terracotta animate-pulse" />
+            <span className="text-xs font-semibold text-forest">Inspector active</span>
+          </div>
+          <p className="text-xs text-muted">Delivered in 12 hours</p>
+        </div>
+      </div>
+
+      {/* Floating annotation circle */}
+      <div className="absolute -top-4 -right-4 w-16 h-16 pointer-events-none">
+        <div className="absolute inset-0 rounded-full border-2 border-terracotta animate-ping opacity-20" />
+        <div className="absolute inset-0 rounded-full border-2 border-terracotta" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-2 h-2 rounded-full bg-terracotta" />
+        </div>
+      </div>
     </div>
   );
 }

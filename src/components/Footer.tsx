@@ -48,7 +48,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-sm">
               <li>
                 <a
-                  href="https://wa.me/919999000000"
+                  href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999000000"}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-cream transition-colors"

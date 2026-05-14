@@ -102,16 +102,24 @@ export default function HomePage() {
     <>
       {/* Hero */}
       <section className="relative min-h-screen flex items-center pt-24 pb-16 overflow-hidden bg-cream">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(31,61,42,0.08),transparent)]" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_60%_40%,rgba(31,61,42,0.06),transparent)]" />
+        {/* Large decorative number */}
+        <div
+          className="absolute right-0 top-1/2 -translate-y-1/2 text-[20rem] font-bold text-forest/4 leading-none select-none pointer-events-none hidden xl:block"
+          style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+          aria-hidden="true"
+        >
+          75
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div>
               <div className="inline-flex items-center gap-2 bg-forest/8 text-forest text-xs font-semibold px-3 py-1.5 rounded-full mb-8 uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-terracotta" />
                 Gurgaon & Delhi NCR
               </div>
               <h1
-                className="text-5xl sm:text-6xl lg:text-7xl font-bold text-charcoal leading-[1.05] mb-6"
+                className="text-5xl sm:text-6xl lg:text-7xl font-bold text-charcoal leading-[1.04] mb-6"
                 style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
               >
                 Don&apos;t sign the lease until you know what&apos;s{" "}
@@ -124,7 +132,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/book"
-                  className="bg-forest text-cream font-semibold px-7 py-4 rounded-xl text-base hover:bg-forest-dark transition-colors text-center"
+                  className="bg-forest text-cream font-semibold px-7 py-4 rounded-xl text-base hover:bg-forest-dark transition-colors text-center shadow-sm hover:shadow-md"
                 >
                   Book an Inspection
                 </Link>
@@ -136,40 +144,32 @@ export default function HomePage() {
                 </Link>
               </div>
 
-              <div className="mt-12 flex items-center gap-8 text-sm text-muted">
-                <div>
-                  <p
-                    className="text-2xl font-bold text-charcoal"
-                    style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+              {/* Stats — bolder treatment */}
+              <div className="mt-12 grid grid-cols-3 border border-border rounded-xl overflow-hidden">
+                {[
+                  { value: "200+", label: "Inspections" },
+                  { value: "₹18L", label: "Saved for tenants" },
+                  { value: "67%", label: "Deals renegotiated" },
+                ].map((stat, i) => (
+                  <div
+                    key={i}
+                    className={`py-5 px-4 text-center ${i < 2 ? "border-r border-border" : ""}`}
                   >
-                    200+
-                  </p>
-                  <p>inspections done</p>
-                </div>
-                <div className="h-10 w-px bg-border" />
-                <div>
-                  <p
-                    className="text-2xl font-bold text-charcoal"
-                    style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
-                  >
-                    ₹18L
-                  </p>
-                  <p>saved for tenants</p>
-                </div>
-                <div className="h-10 w-px bg-border" />
-                <div>
-                  <p
-                    className="text-2xl font-bold text-charcoal"
-                    style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
-                  >
-                    67%
-                  </p>
-                  <p>deals renegotiated</p>
-                </div>
+                    <p
+                      className="text-3xl font-bold text-charcoal leading-none mb-1.5"
+                      style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+                    >
+                      {stat.value}
+                    </p>
+                    <p className="text-xs text-muted uppercase tracking-wide">{stat.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <HeroAnnotation />
+            <AnimatedSection>
+              <HeroAnnotation />
+            </AnimatedSection>
           </div>
         </div>
       </section>
@@ -177,46 +177,52 @@ export default function HomePage() {
       {/* Why this exists */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-16">
+          <AnimatedSection className="mb-16">
+            <span className="text-terracotta text-sm font-semibold uppercase tracking-wider">The problem</span>
             <h2
-              className="text-4xl sm:text-5xl font-bold text-charcoal mb-4"
+              className="text-4xl sm:text-5xl font-bold text-charcoal mt-3"
               style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
             >
-              Why this exists
-            </h2>
-            <p className="text-muted text-lg max-w-xl mx-auto">
               The rental market has a built-in information problem. We fix it.
-            </p>
+            </h2>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="space-y-0">
             {[
               {
-                icon: "🎨",
+                num: "01",
                 title: "Landlords show you the good stuff.",
                 body: "We find what's hidden behind the freshly painted wall. The seepage. The faulty socket. The drainage that only backs up during monsoon.",
               },
               {
-                icon: "🤝",
+                num: "02",
                 title: "Brokers want the deal closed.",
                 body: "We have no commission tied to whether you sign. Our inspector gets paid the same whether you move in or walk away. That's the difference.",
               },
               {
-                icon: "💸",
+                num: "03",
                 title: "You can't unsee a bad house.",
                 body: "Better to spend ₹2,499 now than ₹50,000 later. Deposit fights, broken things, months of stress. We've seen it. You don't have to.",
               },
             ].map((card, i) => (
               <AnimatedSection key={i} delay={i * 0.1}>
-                <div className="p-8 rounded-2xl border border-border hover:border-forest/30 hover:shadow-md transition-all">
-                  <div className="text-4xl mb-5">{card.icon}</div>
-                  <h3
-                    className="text-xl font-bold text-charcoal mb-3"
+                <div className={`flex gap-8 py-10 ${i < 2 ? "border-b border-border" : ""}`}>
+                  <div
+                    className="text-6xl font-bold text-forest/10 flex-shrink-0 leading-none pt-1 hidden sm:block w-16"
                     style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+                    aria-hidden="true"
                   >
-                    {card.title}
-                  </h3>
-                  <p className="text-muted leading-relaxed">{card.body}</p>
+                    {card.num}
+                  </div>
+                  <div className="flex-1">
+                    <h3
+                      className="text-2xl font-bold text-charcoal mb-3"
+                      style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+                    >
+                      {card.title}
+                    </h3>
+                    <p className="text-muted text-lg leading-relaxed max-w-2xl">{card.body}</p>
+                  </div>
                 </div>
               </AnimatedSection>
             ))}
@@ -293,7 +299,7 @@ export default function HomePage() {
               },
             ].map((s, i) => (
               <AnimatedSection key={i} delay={i * 0.1}>
-                <div className="relative p-8 rounded-2xl bg-cream border border-border h-full">
+                <div className="relative p-8 rounded-2xl bg-cream border border-border h-full hover:border-forest/30 hover:shadow-sm transition-all">
                   <div
                     className="text-6xl font-bold text-forest/10 mb-4 leading-none"
                     style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
@@ -309,6 +315,24 @@ export default function HomePage() {
                   <p className="text-muted leading-relaxed">{s.body}</p>
                 </div>
               </AnimatedSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Full-bleed press/credibility strip */}
+      <section className="py-12 bg-forest">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-cream/50 text-xs font-semibold uppercase tracking-widest text-center mb-8">As seen in</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
+            {["YourStory", "Housing.com", "Moneycontrol"].map((outlet) => (
+              <span
+                key={outlet}
+                className="text-cream/60 font-semibold text-lg"
+                style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+              >
+                {outlet}
+              </span>
             ))}
           </div>
         </div>
@@ -439,6 +463,7 @@ export default function HomePage() {
                 price="₹1,499"
                 description="Covers the essentials. Good for quick checks."
                 features={renterFeatures}
+                ctaHref="/book?tier=basic"
               />
             </AnimatedSection>
             <AnimatedSection delay={0.1}>
@@ -448,6 +473,7 @@ export default function HomePage() {
                 description="Our most popular. Everything you need to decide."
                 features={standardFeatures}
                 popular
+                ctaHref="/book?tier=standard"
               />
             </AnimatedSection>
             <AnimatedSection delay={0.2}>
@@ -456,6 +482,7 @@ export default function HomePage() {
                 price="₹3,999"
                 description="For the thorough ones. Includes thermal imaging."
                 features={premiumFeatures}
+                ctaHref="/book?tier=premium"
               />
             </AnimatedSection>
           </div>
@@ -489,8 +516,15 @@ export default function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 bg-forest text-cream">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="py-28 bg-forest text-cream relative overflow-hidden">
+        <div
+          className="absolute right-0 bottom-0 text-[18rem] font-bold text-cream/3 leading-none select-none pointer-events-none"
+          style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+          aria-hidden="true"
+        >
+          75
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
           <AnimatedSection>
             <h2
               className="text-5xl sm:text-6xl font-bold mb-6"
@@ -506,7 +540,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/book"
-                className="bg-terracotta text-white font-semibold px-8 py-4 rounded-xl text-lg hover:bg-terracotta-dark transition-colors"
+                className="bg-terracotta text-white font-semibold px-8 py-4 rounded-xl text-lg hover:bg-terracotta-dark transition-colors shadow-lg"
               >
                 Book an Inspection
               </Link>

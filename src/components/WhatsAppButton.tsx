@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 
+const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999000000";
+
 export default function WhatsAppButton() {
   const [hovered, setHovered] = useState(false);
 
   return (
     <a
-      href="https://wa.me/919999000000?text=Hi%2C%20I%27d%20like%20to%20book%20a%20home%20inspection."
+      href={`https://wa.me/${waNumber}?text=Hi%2C%20I%27d%20like%20to%20book%20a%20home%20inspection.`}
       target="_blank"
       rel="noopener noreferrer"
       onMouseEnter={() => setHovered(true)}

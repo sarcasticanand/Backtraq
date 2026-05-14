@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ChevronRight, Check } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 const schema = z.object({
   type: z.enum(["rental", "purchase"]),
@@ -54,6 +55,7 @@ function getMinDate() {
 export default function BookingForm() {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const searchParams = useSearchParams();
 
   const {
     register,
@@ -70,6 +72,15 @@ export default function BookingForm() {
   const watchType = watch("type");
   const watchTier = watch("tier");
   const tiers = watchType === "purchase" ? buyerTiers : renterTiers;
+
+  useEffect(() => {
+    const tier = searchParams.get("tier");
+    if (!tier) return;
+    const isBuyer = ["buyer-standard", "buyer-premium", "prepurchase"].includes(tier);
+    setValue("type", isBuyer ? "purchase" : "rental");
+    setValue("tier", tier);
+    setStep(2);
+  }, [searchParams, setValue]);
 
   async function next(fields: (keyof FormData)[]) {
     const ok = await trigger(fields);
