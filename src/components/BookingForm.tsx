@@ -6,6 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ChevronRight, Check } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const PaymentButton = dynamic(() => import("./PaymentButton"), { ssr: false });
 
 const schema = z.object({
   type: z.enum(["rental", "purchase"]),
@@ -23,6 +26,15 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
+
+const tierPrices: Record<string, string> = {
+  basic: "₹1,499",
+  standard: "₹2,499",
+  premium: "₹3,999",
+  "buyer-standard": "₹4,999",
+  "buyer-premium": "₹8,999",
+  prepurchase: "₹14,999",
+};
 
 const renterTiers = [
   { value: "basic", label: "Basic", price: "₹1,499", desc: "40 checkpoints, photo report" },
@@ -54,7 +66,9 @@ function getMinDate() {
 
 export default function BookingForm() {
   const [step, setStep] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedData, setSubmittedData] = useState<FormData | null>(null);
+  const [paymentError, setPaymentError] = useState("");
+  const [paid, setPaid] = useState(false);
   const searchParams = useSearchParams();
 
   const {
@@ -88,15 +102,30 @@ export default function BookingForm() {
   }
 
   async function onSubmit(data: FormData) {
+    setSubmittedData(data);
+  }
+
+  async function handlePaymentSuccess(paymentId: string) {
+    if (!submittedData) return;
     await fetch("/api/book", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...submittedData, paymentId }),
     }).catch(() => {});
-    setSubmitted(true);
+    setPaid(true);
   }
 
-  if (submitted) {
+  function handleSkipPayment() {
+    if (!submittedData) return;
+    fetch("/api/book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(submittedData),
+    }).catch(() => {});
+    setPaid(true);
+  }
+
+  if (paid) {
     return (
       <div className="bg-white border border-border rounded-2xl p-10 text-center">
         <div className="w-16 h-16 rounded-full bg-forest/10 flex items-center justify-center mx-auto mb-6">
@@ -106,7 +135,7 @@ export default function BookingForm() {
           className="text-3xl font-bold text-charcoal mb-3"
           style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
         >
-          Booking received.
+          Booking confirmed.
         </h2>
         <p className="text-muted text-lg mb-6">
           We&apos;ll WhatsApp you within 30 minutes to confirm your slot.
@@ -116,6 +145,67 @@ export default function BookingForm() {
           <p>✓ Save our number: +91 99990 00000</p>
           <p>✓ Share the property address over WhatsApp if you have access details</p>
         </div>
+      </div>
+    );
+  }
+
+  if (submittedData) {
+    const tierPrice = tierPrices[submittedData.tier] || "";
+    return (
+      <div className="bg-white border border-border rounded-2xl p-10">
+        <div className="text-center mb-8">
+          <h2
+            className="text-3xl font-bold text-charcoal mb-2"
+            style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+          >
+            Almost there.
+          </h2>
+          <p className="text-muted text-lg">Pay now to secure your slot, or pay on the day.</p>
+        </div>
+
+        <div className="bg-cream rounded-xl p-5 mb-6 text-sm space-y-2">
+          <div className="flex justify-between">
+            <span className="text-muted">Inspection plan</span>
+            <span className="font-semibold text-charcoal capitalize">{submittedData.tier.replace(/-/g, " ")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted">Date</span>
+            <span className="font-semibold text-charcoal">{submittedData.date}, {submittedData.timeSlot}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted">Location</span>
+            <span className="font-semibold text-charcoal">{submittedData.area}, {submittedData.city}</span>
+          </div>
+          <div className="flex justify-between border-t border-border pt-2 mt-2">
+            <span className="font-semibold text-charcoal">Total</span>
+            <span
+              className="text-xl font-bold text-forest"
+              style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+            >
+              {tierPrice}
+            </span>
+          </div>
+        </div>
+
+        {paymentError && (
+          <p className="text-red-500 text-sm mb-4 text-center">{paymentError}</p>
+        )}
+
+        <PaymentButton
+          tier={submittedData.tier}
+          name={submittedData.name}
+          email={submittedData.email}
+          phone={submittedData.phone}
+          onSuccess={handlePaymentSuccess}
+          onError={setPaymentError}
+        />
+
+        <button
+          onClick={handleSkipPayment}
+          className="w-full mt-3 py-3 text-sm text-muted hover:text-charcoal transition-colors"
+        >
+          Skip — I&apos;ll pay on the day (cash / UPI)
+        </button>
       </div>
     );
   }
