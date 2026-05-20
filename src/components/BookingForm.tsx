@@ -17,12 +17,12 @@ const schema = z.object({
   city: z.string().min(1, "Please select a city"),
   area: z.string().min(2, "Please enter an area or sector"),
   propertyType: z.string().min(1, "Please select a property type"),
-  sizeSqft: z.string().refine(val => !val || /\d/.test(val), "Please include a number (e.g. 1100 sqft)").optional(),
+  sizeSqft: z.string().regex(/^\d+$/, "Numbers only (e.g. 1100)").optional().or(z.literal("")),
   tier: z.string().min(1, "Please select a plan"),
   date: z.string().min(1, "Please select a date"),
   timeSlot: z.string().min(1, "Please select a time slot"),
   name: z.string().min(2, "Please enter your name"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
+  phone: z.string().regex(/^\d{10}$/, "Please enter a valid 10-digit mobile number"),
   email: z.string().email("Please enter a valid email"),
   notes: z.string().optional(),
 });
@@ -71,6 +71,7 @@ export default function BookingForm() {
   const [submittedData, setSubmittedData] = useState<FormData | null>(null);
   const [paymentError, setPaymentError] = useState("");
   const [paid, setPaid] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
   const searchParams = useSearchParams();
 
   const {
@@ -107,24 +108,32 @@ export default function BookingForm() {
     setSubmittedData(data);
   }
 
-  async function handlePaymentSuccess(paymentId: string) {
-    if (!submittedData) return;
-    await fetch("/api/book", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...submittedData, paymentId }),
-    }).catch(() => {});
-    setPaid(true);
+  async function submitBooking(data: FormData & { paymentId?: string }) {
+    setBookingLoading(true);
+    setPaymentError("");
+    try {
+      const res = await fetch("/api/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, phone: `91${data.phone}` }),
+      });
+      if (!res.ok) throw new Error("Server error");
+      setPaid(true);
+    } catch {
+      setPaymentError("Something went wrong. Please try again or WhatsApp us directly.");
+    } finally {
+      setBookingLoading(false);
+    }
   }
 
-  function handleSkipPayment() {
+  async function handlePaymentSuccess(paymentId: string) {
     if (!submittedData) return;
-    fetch("/api/book", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(submittedData),
-    }).catch(() => {});
-    setPaid(true);
+    await submitBooking({ ...submittedData, paymentId });
+  }
+
+  async function handleSkipPayment() {
+    if (!submittedData) return;
+    await submitBooking(submittedData);
   }
 
   if (paid) {
@@ -205,7 +214,8 @@ export default function BookingForm() {
             />
             <button
               onClick={handleSkipPayment}
-              className="w-full mt-3 py-3 text-sm text-muted hover:text-charcoal transition-colors"
+              disabled={bookingLoading}
+              className="w-full mt-3 py-3 text-sm text-muted hover:text-charcoal transition-colors disabled:opacity-50"
             >
               Skip — I&apos;ll pay on the day (cash / UPI)
             </button>
@@ -213,9 +223,10 @@ export default function BookingForm() {
         ) : (
           <button
             onClick={handleSkipPayment}
-            className="w-full bg-forest text-cream font-semibold py-3.5 rounded-xl hover:bg-forest-dark transition-colors"
+            disabled={bookingLoading}
+            className="w-full bg-forest text-cream font-semibold py-3.5 rounded-xl hover:bg-forest-dark transition-colors disabled:opacity-60"
           >
-            Confirm Booking — Pay on the day (cash / UPI)
+            {bookingLoading ? "Confirming…" : "Confirm Booking — Pay on the day (cash / UPI)"}
           </button>
         )}
       </div>
@@ -359,11 +370,17 @@ export default function BookingForm() {
                 <label className="block text-sm font-semibold text-charcoal mb-2">
                   Approximate size <span className="font-normal text-muted">(optional)</span>
                 </label>
-                <input
-                  {...register("sizeSqft")}
-                  placeholder="e.g. 1100 sqft"
-                  className="w-full border border-border rounded-xl px-4 py-3 text-charcoal placeholder-muted/50 focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                />
+                <div className="flex">
+                  <input
+                    {...register("sizeSqft")}
+                    placeholder="1100"
+                    type="number"
+                    min="1"
+                    className="flex-1 border border-r-0 border-border rounded-l-xl px-4 py-3 text-charcoal placeholder-muted/50 focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
+                  />
+                  <span className="flex items-center px-4 border border-border rounded-r-xl bg-cream text-muted text-sm">sqft</span>
+                </div>
+                {errors.sizeSqft && <p className="text-red-500 text-xs mt-1">{errors.sizeSqft.message}</p>}
               </div>
             </div>
 
@@ -534,12 +551,16 @@ export default function BookingForm() {
 
               <div>
                 <label className="block text-sm font-semibold text-charcoal mb-2">WhatsApp number</label>
-                <input
-                  {...register("phone")}
-                  placeholder="+91 98765 43210"
-                  type="tel"
-                  className="w-full border border-border rounded-xl px-4 py-3 text-charcoal placeholder-muted/50 focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                />
+                <div className="flex">
+                  <span className="flex items-center px-4 border border-r-0 border-border rounded-l-xl bg-cream text-charcoal font-medium text-sm">+91</span>
+                  <input
+                    {...register("phone")}
+                    placeholder="98765 43210"
+                    type="tel"
+                    maxLength={10}
+                    className="flex-1 border border-border rounded-r-xl px-4 py-3 text-charcoal placeholder-muted/50 focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
+                  />
+                </div>
                 {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
               </div>
 
